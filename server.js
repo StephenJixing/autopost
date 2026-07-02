@@ -60,8 +60,8 @@ function forwardRequest(targetUrl, headers, body) {
   });
 }
 
-function createServer() {
-  return http.createServer((req, res) => {
+function createHandler() {
+  return function handleRequest(req, res) {
     const url = new URL(req.url, `http://${req.headers.host || '127.0.0.1'}`);
 
     if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/autopost.html')) {
@@ -94,7 +94,12 @@ function createServer() {
 
     res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
     res.end('Not Found');
-  });
+  };
+}
+
+function createServer() {
+  const handler = createHandler();
+  return http.createServer((req, res) => handler(req, res));
 }
 
 function startServer(port = PORT, host = HOST) {
@@ -111,4 +116,6 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, startServer };
+module.exports = createHandler();
+module.exports.createServer = createServer;
+module.exports.startServer = startServer;
