@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AutoPOST · 定时请求工具</title>
+<style>
+:root {
+  --bg: #f1f5f9;
+  --surface: #ffffff;
+  --border: #e2e8f0;
+  --text: #1e293b;
+  --text2: #64748b;
+  --primary: #3b82f6;
+  --primary-h: #2563eb;
+  --success: #22c55e;
+  --danger: #ef4444;
+  --radius: 10px;
+  --shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  padding: 24px;
+  min-height: 100vh;
+}
+.header {
+  max-width: 1000px; margin: 0 auto 24px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.header h1 {
+  font-size: 22px; font-weight: 700;
+  display: flex; align-items: center; gap: 8px;
+}
+.header h1 small {
+  font-size: 12px; font-weight: 500; color: var(--text2);
+  background: #e2e8f0; padding: 2px 10px; border-radius: 20px;
+}
+.toolbar { display: flex; gap: 10px; }
+.btn {
+  padding: 8px 18px; border: none; border-radius: 8px;
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  transition: all .12s; display: inline-flex; align-items: center; gap: 5px;
+  white-space: nowrap;
+}
+.btn:active { transform: scale(.96); }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-h); }
+.btn-success { background: var(--success); color: #fff; }
+.btn-success:hover { background: #16a34a; }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover { background: #dc2626; }
+.btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--text); }
+.btn-outline:hover { background: var(--bg); }
+.btn-sm { padding: 4px 12px; font-size: 12px; }
+.btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+.container { max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+}
+.card-hd {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 18px; background: #f8fafc;
+  border-bottom: 1px solid var(--border); gap: 10px;
+}
+.card-hd .left { display: flex; align-items: center; gap: 10px; flex: 1; }
+.card-hd input.name {
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 5px 10px; font-size: 13px; width: 160px;
+}
+.card-hd input.name:focus { outline: none; border-color: var(--primary); }
+.card-hd .right { display: flex; align-items: center; gap: 8px; }
+.badge {
+  font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 600;
+  white-space: nowrap;
+}
+.b-pending { background: #fef3c7; color: #92400e; }
+.b-scheduled { background: #dbeafe; color: #1e40af; }
+.b-sending { background: #e0e7ff; color: #3730a3; }
+.b-success { background: #dcfce7; color: #166534; }
+.b-error { background: #fee2e2; color: #991b1b; }
+.card-bd { padding: 14px 18px; display: flex; flex-direction: column; gap: 14px; }
+.slabel {
+  font-size: 11px; font-weight: 600; color: var(--text2);
+  text-transform: uppercase; letter-spacing: .4px; margin-bottom: 4px;
+}
+.url-row { display: flex; gap: 8px; }
+.url-row input { flex: 1; border: 1px solid var(--border); border-radius: 6px; padding: 7px 12px; font-size: 13px; }
+.url-row input:focus { outline: none; border-color: var(--primary); }
+.kv-list { display: flex; flex-direction: column; gap: 5px; }
+.kv-row { display: flex; gap: 6px; align-items: center; }
+.kv-row .kk { flex: 1; border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; font-size: 12px; }
+.kv-row .kv { flex: 2; border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; font-size: 12px; }
+.kv-row .kk:focus, .kv-row .kv:focus { outline: none; border-color: var(--primary); }
+.kv-row .btn { padding: 4px 8px; font-size: 12px; }
+.body-wrap textarea {
+  width: 100%; min-height: 280px; border: 1px solid var(--border); border-radius: 6px;
+  padding: 10px; font-family: "SF Mono", "Fira Code", monospace; font-size: 12px; line-height: 1.6;
+  resize: vertical; color: var(--text); background: #fafbfc;
+  tab-size: 2;
+}
+.body-wrap textarea:focus { outline: none; border-color: var(--primary); }
+.replace-box { margin-top: 2px; }
+.replace-list { display: flex; flex-direction: column; gap: 5px; }
+.replace-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.replace-row select, .replace-row input {
+  border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; font-size: 12px; background: var(--surface); color: var(--text);
+}
+.replace-row select:focus, .replace-row input:focus { outline: none; border-color: var(--primary); }
+.replace-row .btn { padding: 4px 8px; font-size: 12px; }
+.rp-key { width: 160px; }
+.rp-ctrl input { min-width: 100px; }
+.rp-type { width: 76px; }
+.sched-row {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.sched-row label { font-size: 12px; color: var(--text2); }
+.sched-row input[type="date"] { width: 140px; }
+.sched-row input[type="time"] { width: 100px; }
+.sched-row input {
+  border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; font-size: 12px; background: var(--surface); color: var(--text);
+}
+.sched-row input:focus { outline: none; border-color: var(--primary); }
+.sched-row .acts { margin-left: auto; display: flex; gap: 6px; }
+.toggle-log {
+  font-size: 12px; color: var(--text2); cursor: pointer; user-select: none; padding: 4px 0;
+}
+.toggle-log:hover { color: var(--text); }
+.log-area {
+  max-height: 300px; overflow-y: auto; font-size: 12px; line-height: 1.6;
+  background: #fafbfc; border-top: 1px solid var(--border); padding: 8px 14px;
+}
+.le { padding: 2px 0; display: flex; gap: 10px; }
+.lt { color: #94a3b8; white-space: nowrap; font-family: monospace; font-size: 11px; padding-top: 1px; }
+.lok { color: #166534; }
+.lerr { color: #991b1b; }
+#empty { text-align: center; padding: 60px 20px; color: var(--text2); }
+#empty .big { font-size: 48px; margin-bottom: 12px; }
+#empty p { font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>⏱ AutoPOST <small>定时请求</small></h1>
+  <div class="toolbar">
+    <button class="btn btn-outline btn-sm" onclick="scheduler.check()">⏰ 检查待发送</button>
+    <button class="btn btn-success" onclick="addRequest()">＋ 添加请求</button>
+  </div>
+</div>
+<div class="container" id="list"></div>
+<div id="empty">
+  <div class="big">📭</div>
+  <p>暂无请求，点击上方 <strong>＋ 添加请求</strong> 开始</p>
+</div>
+
+<script>
+var _id = 0;
+var _reqs = [];
+
+var scheduler = {
+  _timer: null,
+  start: function () {
+    if (this._timer) return;
+    this._timer = setInterval(function(){ scheduler.check(); }, 1000);
+  },
+  stop: function () {
+    if (this._timer) { clearInterval(this._timer); this._timer = null; }
+  },
+  check: function () {
+    var now = Date.now();
+    var list = store.list();
+    var hasPending = false;
+    for (var i = 0; i < list.length; i++) {
+      var r = list[i];
+      if (r.status === 'scheduled' && r.scheduledAt && now >= r.scheduledAt) {
+        store.send(r.id);
+      } else if (r.status === 'scheduled') {
+        hasPending = true;
+      }
+    }
+    if (!hasPending) this.stop();
+    else this.start();
+  }
+};
+
+function defaultReq() {
+  _id++;
+  return {
+    id: _id,
+    label: '\u8bf7\u6c42 #' + _id,
+    url: '',
+    params: [],
+    body: JSON.stringify({"planDate":"20260629","sites":[{"startTime":"20:00","endTime":"21:00","price":300,"planDate":"20260629","sitesId":12094,"siteName":"1\u53f7\u573a","idx":11,"siteType":"1"}],"total":300,"payType":3,"cardType":3,"objectId":173706,"cardContractId":29061597,"discountType":2,"discountRatio":0,"realAmount":0,"groundName":"\u5458\u5de5\u4f1a\u5458\uff08\u5de5\u4f5c\u65e5\uff09","subscriberPhone":"13486119608","subscriberName":"\u5fae\u4fe1\u7528\u6237","rentType":"1","channel":0,"couponInstanceId":null,"deductionAmount":300,"payMethod":5}, null, 2),
+    replaces: [
+      { key: 'planDate', type: 'date', val: '2026-06-29' },
+      { key: 'sites.0.startTime', type: 'time', val: '20:00' },
+      { key: 'sites.0.endTime', type: 'time', val: '21:00' },
+      { key: 'sites.0.price', type: 'number', val: '300' }
+    ],
+    headers: [
+      { key: 'Host', val: 'www.forzadata.cn' },
+      { key: 'xweb_xhr', val: '1' },
+      { key: 'WXAPPCHATID', val: 'eyJuYW1lIjoi5b6u5L+h55So5oi3IiwicGhvbmUiOiIxMzQ4NjExOTYwOCIsImFjY291bnRJZCI6MTI3MTA2ODgsImltcGVyc29uYXRlZCI6ZmFsc2UsImNoYW5uZWwiOm51bGwsImlwIjpudWxsLCJ0cyI6MTc2MDc3MTI4MDA3M30=.LL3EM/GhSJKpTHlHKcDxVIv1BbKS8/j7stnuF7lizyk=' },
+      { key: 'User-Agent', val: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 MicroMessenger/7.0.20.1781(0x6700143B) NetType/WIFI MiniProgramEnv/Windows WindowsWechat/WMPF WindowsWechat(0x63090c11)XWEB/11275' },
+      { key: 'Sec-Fetch-Site', val: 'cross-site' },
+      { key: 'Sec-Fetch-Mode', val: 'cors' },
+      { key: 'Sec-Fetch-Dest', val: 'empty' },
+      { key: 'Referer', val: 'https://servicewechat.com/wx1a322211606f019f/12/page-frame.html' },
+      { key: 'Accept-Encoding', val: 'gzip, deflate, br' },
+      { key: 'Accept-Language', val: 'zh-CN,zh;q=0.9' },
+      { key: 'Content-Type', val: 'application/json' },
+      { key: 'Accept', val: '*/*' },
+      { key: 'Cache-Control', val: 'no-cache' },
+      { key: 'Postman-Token', val: 'bcc1c856-b8c3-4113-b7eb-3065c15a3cc1' },
+      { key: 'Connection', val: 'keep-alive' },
+      { key: 'Cookie', val: 'JSESSIONID=cwqqen1084j9gkw893qlqhvu' }
+    ],
+    schedDate: '',
+    schedTime: '',
+    scheduledAt: null,
+    status: 'pending',
+    logs: [],
+    response: null
+  };
+}
+
+var store = {
+  list: function() { return _reqs; },
+  find: function(id) { for (var i=0;i<_reqs.length;i++) { if (_reqs[i].id===id) return _reqs[i]; } return null; },
+  add: function(r) { _reqs.push(r); render(); return r; },
+  remove: function(id) {
+    for (var i=0;i<_reqs.length;i++) {
+      if (_reqs[i].id===id) { _reqs.splice(i,1); render(); return; }
+    }
+  },
+  send: function(id) {
+    var r = this.find(id);
+    if (!r) return;
+    r.status = 'sending';
+    r.logs.push({ t: Date.now(), msg: '\ud83d\udce4 \u53d1\u9001\u4e2d\u2026' });
+    render();
+    var url = r.url;
+    var qs = (r.params || []).filter(function(p) { return p.key.trim(); });
+    if (qs.length) {
+      var usp = new URLSearchParams();
+      qs.forEach(function(p) { usp.append(p.key, p.val); });
+      url += (url.includes('?') ? '&' : '?') + usp.toString();
+    }
+    var bodyParsed;
+    try { bodyParsed = JSON.parse(r.body); }
+    catch (e) {
+      r.status = 'error';
+      r.logs.push({ t: Date.now(), msg: '\u274c JSON \u89e3\u6790\u5931\u8d25: ' + e.message });
+      render(); return;
+    }
+        var t0 = Date.now();
+    var hdr = {};
+    if (r.headers) {
+      for (var hi=0; hi<r.headers.length; hi++) {
+        var h = r.headers[hi];
+        if (h.key.trim()) hdr[h.key] = h.val;
+      }
+    }
+        var proxyUrl = window.location.origin + '/proxy';
+    
+    function doFetch() {
+      fetch(proxyUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: url,
+          headers: hdr,
+          body: JSON.stringify(bodyParsed)
+        })
+      }).then(function(res) {
+        return res.json().then(function(data) {
+          var ms = Date.now() - t0;
+          var txt = '';
+          try { txt = JSON.stringify(JSON.parse(data.body), null, 2); } catch(e) { txt = data.body || ''; }
+          r.response = txt;
+          if (data.status >= 200 && data.status < 300) {
+            r.status = 'success';
+            r.logs.push({ t: Date.now(), msg: '\u2705 ' + data.status + ' (' + ms + 'ms)' });
+            r.logs.push({ t: Date.now(), msg: txt.substring(0, 600) });
+          } else {
+            r.status = 'error';
+            r.logs.push({ t: Date.now(), msg: '\u274c ' + data.status + ' (' + ms + 'ms)' });
+            r.logs.push({ t: Date.now(), msg: txt.substring(0, 600) });
+          }
+          render();
+        });
+      }).catch(function(err) {
+        r.status = 'error';
+        r.logs.push({ t: Date.now(), msg: '\ud83d\udca5 \u7f51\u7edc\u9519\u8bef: ' + err.message });
+        render();
+      });
+    }
+    doFetch();
+  },
+  schedule: function(id) {
+    var r = this.find(id);
+    if (!r) return;
+    if (!r.schedDate || !r.schedTime) { alert('\u8bf7\u5148\u9009\u62e9\u6267\u884c\u65e5\u671f\u548c\u65f6\u95f4'); return; }
+    var dt = new Date(r.schedDate + 'T' + r.schedTime + ':00');
+    if (isNaN(dt.getTime())) { alert('\u65e5\u671f\u6216\u65f6\u95f4\u683c\u5f0f\u65e0\u6548'); return; }
+    if (dt.getTime() <= Date.now()) { alert('\u6267\u884c\u65f6\u95f4\u5fc5\u987b\u5728\u672a\u6765'); return; }
+    r.scheduledAt = dt.getTime();
+    r.status = 'scheduled';
+    r.logs.push({ t: Date.now(), msg: '\u23f0 \u5df2\u8c03\u5ea6\u4e8e ' + fmtDT(dt) });
+    scheduler.start();
+    render();
+  },
+  cancelSchedule: function(id) {
+    var r = this.find(id);
+    if (!r) return;
+    r.scheduledAt = null;
+    r.status = 'pending';
+    r.logs.push({ t: Date.now(), msg: '\u5df2\u53d6\u6d88\u8c03\u5ea6' });
+    render();
+  }
+};
+
+function getPath(obj, path) {
+  var parts = path.split('.');
+  var cur = obj;
+  for (var i=0;i<parts.length;i++) {
+    if (cur == null) return undefined;
+    cur = cur[parts[i]];
+  }
+  return cur;
+}
+
+function setPath(obj, path, val) {
+  var parts = path.split('.');
+  var cur = obj;
+  for (var i=0;i<parts.length-1;i++) {
+    var p = parts[i];
+    if (cur[p] == null) cur[p] = /^\d+$/.test(parts[i+1]) ? [] : {};
+    cur = cur[p];
+  }
+  var last = parts[parts.length-1];
+  if (typeof cur[last] === 'number') cur[last] = Number(val);
+  else if (typeof cur[last] === 'boolean') cur[last] = val === 'true';
+  else cur[last] = val;
+}
+
+function applyReplaces(body, replaces) {
+  var obj;
+  try { obj = JSON.parse(body); } catch(e) { return body; }
+  var planDateVal = null;
+  for (var i=0;i<replaces.length;i++) {
+    var r = replaces[i];
+    if (!r.key.trim()) continue;
+    var val = r.val;
+    if (r.type === 'date' && val) {
+      var existing = getPath(obj, r.key);
+      if (typeof existing === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(existing)) {
+        // keep YYYY-MM-DD
+      } else {
+        val = val.replace(/-/g, '');
+      }
+    }
+    if (r.key === 'planDate') planDateVal = val;
+    setPath(obj, r.key, val);
+  }
+  if (planDateVal !== null) {
+    setPath(obj, 'sites.0.planDate', planDateVal);
+  }
+  return JSON.stringify(obj, null, 2);
+}
+
+function pad(n) { return String(n).padStart(2, '0'); }
+function fmtDT(d) {
+  return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+function fmtTS(ts) { return fmtDT(new Date(ts)); }
+function esc(s) {
+  if (s == null) return '';
+  var d = document.createElement('div'); d.textContent = String(s); return d.innerHTML;
+}
+function badge(status) {
+  var map = {
+    pending: ['\u23f3 \u5f85\u53d1\u9001','b-pending'],
+    scheduled: ['\u23f0 \u5df2\u8c03\u5ea6','b-scheduled'],
+    sending: ['\ud83d\udce4 \u53d1\u9001\u4e2d','b-sending'],
+    success: ['\u2705 \u6210\u529f','b-success'],
+    error: ['\u274c \u5931\u8d25','b-error']
+  };
+  var m = map[status] || ['?','b-pending'];
+  return '<span class="badge ' + m[1] + '">' + m[0] + '</span>';
+}
+
+function render() {
+  var listEl = document.getElementById('list');
+  var emptyEl = document.getElementById('empty');
+  listEl.innerHTML = '';
+  for (var i=0;i<_reqs.length;i++) renderCard(_reqs[i], listEl);
+  emptyEl.style.display = _reqs.length === 0 ? 'block' : 'none';
+}
+
+function renderCard(r, parent) {
+  var card = document.createElement('div');
+  card.className = 'card';
+
+  // Header
+  var hd = document.createElement('div');
+  hd.className = 'card-hd';
+  hd.innerHTML = '<div class="left"><input type="text" class="name" value="' + esc(r.label) + '" placeholder="\u8bf7\u6c42\u540d\u79f0"></div><div class="right">' + badge(r.status) + '<button class="btn btn-danger btn-sm" data-act="del">\ud83d\uddd1 \u5220\u9664</button></div>';
+  hd.querySelector('.name').addEventListener('change', function(e) { r.label = e.target.value; });
+  hd.querySelector('[data-act="del"]').addEventListener('click', function() {
+    if (confirm('\u5220\u9664\u300c' + r.label + '\u300d\uff1f')) store.remove(r.id);
+  });
+
+  // Body area
+  var bd = document.createElement('div');
+  bd.className = 'card-bd';
+
+  // ---- URL section ----
+  var urlSec = document.createElement('div');
+  var URL_OPTIONS = [
+    { label: '\u2014 \u624b\u52a8\u8f93\u5165 \u2014', url: '' },
+    { label: '\u5de5\u4f5c\u65e51\u53f7', url: 'https://www.forzadata.cn/api/wxApp/athleticGround/3667/createGroundReservePay/3589?thirdParty=3667&openId=oUhoo5CC4jcfqCUGg9790kbLlyhA' },
+    { label: '\u5de5\u4f5c\u65e52\u53f7', url: 'https://www.forzadata.cn/api/wxApp/athleticGround/3667/createGroundReservePay/3591?thirdParty=3667&openId=oUhoo5CC4jcfqCUGg9790kbLlyhA' },
+    { label: '\u5468\u672b1\u53f7', url: 'https://www.forzadata.cn/api/wxApp/athleticGround/3667/createGroundReservePay/3592?thirdParty=3667&openId=oUhoo5CC4jcfqCUGg9790kbLlyhA' },
+    { label: '\u5468\u672b2\u53f7', url: 'https://www.forzadata.cn/api/wxApp/athleticGround/3667/createGroundReservePay/3593?thirdParty=3667&openId=oUhoo5CC4jcfqCUGg9790kbLlyhA' }
+  ];
+  var selHtml = '';
+  for (var oi=0;oi<URL_OPTIONS.length;oi++) {
+    selHtml += '<option value="' + esc(URL_OPTIONS[oi].url) + '">' + esc(URL_OPTIONS[oi].label) + '</option>';
+  }
+  urlSec.innerHTML = '<div class="slabel">\u8bf7\u6c42 URL</div><select class="url-preset" style="width:100%;border:1px solid var(--border);border-radius:6px;padding:7px 12px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:8px;cursor:pointer">' + selHtml + '</select><div class="url-row"><input type="text" class="u" value="' + esc(r.url) + '" placeholder="https://example.com/api/book"></div>';
+
+  var sel = urlSec.querySelector('.url-preset');
+  sel.addEventListener('change', function(e) {
+    if (e.target.value) {
+      r.url = e.target.value;
+      urlSec.querySelector('.u').value = r.url;
+    }
+  });
+  var urlInput = urlSec.querySelector('.u');
+  urlInput.addEventListener('change', function(e) { r.url = e.target.value; });
+  setTimeout(function() {
+    for (var si=0;si<sel.options.length;si++) {
+      if (sel.options[si].value === r.url) { sel.selectedIndex = si; break; }
+    }
+  }, 0);
+
+  // ---- Query Params ----
+  var paramSec = document.createElement('div');
+  var pList = document.createElement('div');
+  pList.className = 'kv-list';
+  function renderParams() {
+    pList.innerHTML = '';
+    var arr = r.params || [];
+    for (var pi=0;pi<arr.length;pi++) {
+      (function(p, idx) {
+        var row = document.createElement('div');
+        row.className = 'kv-row';
+        row.innerHTML = '<input class="kk" type="text" value="' + esc(p.key) + '" placeholder="\u53c2\u6570\u540d"><input class="kv" type="text" value="' + esc(p.val) + '" placeholder="\u503c"><button class="btn btn-danger btn-sm">\u00d7</button>';
+        row.querySelector('.kk').addEventListener('change', function(e) { p.key = e.target.value; });
+        row.querySelector('.kv').addEventListener('change', function(e) { p.val = e.target.value; });
+        row.querySelector('.btn').addEventListener('click', function() { r.params.splice(idx, 1); renderParams(); });
+        pList.appendChild(row);
+      })(arr[pi], pi);
+    }
+  }
+  if (!r.params) r.params = [];
+  renderParams();
+  paramSec.innerHTML = '<div class="slabel">Query Params</div>';
+  paramSec.appendChild(pList);
+  var addP = document.createElement('button');
+  addP.className = 'btn btn-outline btn-sm'; addP.textContent = '\uff0b \u6dfb\u52a0\u53c2\u6570';
+  addP.addEventListener('click', function() { r.params.push({ key: '', val: '' }); renderParams(); });
+  paramSec.appendChild(addP);
+
+  // ---- Headers ----
+  var hdrSec = document.createElement('div');
+  var hdrList = document.createElement('div');
+  hdrList.className = 'kv-list';
+  function renderHeaders() {
+    hdrList.innerHTML = '';
+    var arr = r.headers || [];
+    for (var hi=0;hi<arr.length;hi++) {
+      (function(h, idx) {
+        var row = document.createElement('div');
+        row.className = 'kv-row';
+        row.innerHTML = '<input class="kk" type="text" value="' + esc(h.key) + '" placeholder="Header\u540d\u79f0" style="flex:.4"><input class="kv" type="text" value="' + esc(h.val) + '" placeholder="\u503c" style="flex:.6"><button class="btn btn-danger btn-sm">\u00d7</button>';
+        row.querySelector('.kk').addEventListener('change', function(e) { h.key = e.target.value; });
+        row.querySelector('.kv').addEventListener('change', function(e) { h.val = e.target.value; });
+        row.querySelector('.btn').addEventListener('click', function() { r.headers.splice(idx, 1); renderHeaders(); });
+        hdrList.appendChild(row);
+      })(arr[hi], hi);
+    }
+  }
+  if (!r.headers) r.headers = [];
+  renderHeaders();
+  hdrSec.innerHTML = '<div class="slabel">Headers <span style="font-weight:400;text-transform:none;color:#94a3b8;font-size:11px">(WXAPPCHATID \u53ef\u81ea\u5b9a\u4e49\u4fee\u6539)</span></div>';
+  hdrSec.appendChild(hdrList);
+  var addH = document.createElement('button');
+  addH.className = 'btn btn-outline btn-sm'; addH.textContent = '\uff0b \u6dfb\u52a0Header';
+  addH.addEventListener('click', function() { r.headers.push({ key: '', val: '' }); renderHeaders(); });
+  hdrSec.appendChild(addH);
+
+  // ---- Body ----
+  var bodySec = document.createElement('div');
+  bodySec.className = 'body-wrap';
+  bodySec.innerHTML = '<div class="slabel">\u8bf7\u6c42 Body (JSON)</div><textarea class="ta">' + esc(r.body) + '</textarea>';
+  var ta = bodySec.querySelector('.ta');
+  ta.addEventListener('change', function() { r.body = ta.value; });
+
+  // ---- Replace fields ----
+  var repSec = document.createElement('div');
+  repSec.className = 'replace-box';
+  var repList = document.createElement('div');
+  repList.className = 'replace-list';
+  function renderReplaces() {
+    repList.innerHTML = '';
+    var arr = r.replaces || [];
+    for (var ri=0;ri<arr.length;ri++) {
+      (function(rp, idx) {
+        var row = document.createElement('div');
+        row.className = 'replace-row';
+        row.innerHTML = '<input class="rp-key" type="text" value="' + esc(rp.key) + '" placeholder="\u952e\u8def\u5f84 e.g. sites.0.startTime"><select class="rp-type"><option value="date"' + (rp.type==='date'?' selected':'') + '>\ud83d\udcc5 \u65e5\u671f</option><option value="time"' + (rp.type==='time'?' selected':'') + '>\u23f0 \u65f6\u95f4</option><option value="number"' + (rp.type==='number'?' selected':'') + '>\ud83d\udd22 \u6570\u5b57</option><option value="text"' + (rp.type==='text'?' selected':'') + '>\ud83d\udcdd \u6587\u672c</option></select><span class="rp-ctrl"></span><button class="btn btn-danger btn-sm">\u00d7</button>';
+
+        var ctrlSpan = row.querySelector('.rp-ctrl');
+        var typeSel = row.querySelector('.rp-type');
+        var keyInp = row.querySelector('.rp-key');
+
+        function buildCtrl() {
+          var t = typeSel.value;
+          if (t === 'date') ctrlSpan.innerHTML = '<input type="date" value="' + esc(rp.val||'') + '">';
+          else if (t === 'time') ctrlSpan.innerHTML = '<input type="time" value="' + esc(rp.val||'') + '">';
+          else if (t === 'number') ctrlSpan.innerHTML = '<input type="number" step="any" value="' + esc(rp.val||'') + '" style="width:100px">';
+          else ctrlSpan.innerHTML = '<input type="text" value="' + esc(rp.val||'') + '" style="width:120px">';
+          var inp = ctrlSpan.querySelector('input');
+          if (inp) {
+            inp.addEventListener('change', function() {
+              rp.val = inp.value;
+              r.body = applyReplaces(r.body, r.replaces);
+              ta.value = r.body;
+            });
+            if (inp.type === 'number') {
+              inp.addEventListener('input', function() {
+                rp.val = inp.value;
+                r.body = applyReplaces(r.body, r.replaces);
+                ta.value = r.body;
+              });
+            }
+          }
+        }
+        buildCtrl();
+        typeSel.addEventListener('change', function() { rp.type = typeSel.value; buildCtrl(); });
+        keyInp.addEventListener('change', function() {});
+        row.querySelector('.btn').addEventListener('click', function() { r.replaces.splice(idx, 1); renderReplaces(); });
+        repList.appendChild(row);
+      })(arr[ri], ri);
+    }
+  }
+  if (!r.replaces) r.replaces = [];
+  renderReplaces();
+  repSec.innerHTML = '<div class="slabel" style="margin-bottom:2px">\ud83d\udd27 \u5b57\u6bb5\u66ff\u6362 <span style="font-weight:400;text-transform:none;color:#94a3b8;font-size:11px">(\u4fee\u6539 planDate \u540e\u81ea\u52a8\u540c\u6b65\u5230 sites.0.planDate)</span></div>';
+  repSec.appendChild(repList);
+  var addRep = document.createElement('button');
+  addRep.className = 'btn btn-outline btn-sm'; addRep.textContent = '\uff0b \u6dfb\u52a0\u66ff\u6362\u5b57\u6bb5';
+  addRep.style.marginTop = '6px';
+  addRep.addEventListener('click', function() { r.replaces.push({ key: '', type: 'date', val: '' }); renderReplaces(); });
+  repSec.appendChild(addRep);
+
+  // ---- Schedule ----
+  var schedSec = document.createElement('div');
+  schedSec.innerHTML = '<div class="slabel">\u23f1 \u6267\u884c\u8ba1\u5212</div><div class="sched-row"><label>\ud83d\udcc5 \u65e5\u671f</label><input type="date" class="sd" value="' + esc(r.schedDate) + '"><label>\u23f0 \u65f6\u95f4</label><input type="time" class="st" value="' + esc(r.schedTime) + '"><span class="acts"><button class="btn btn-primary btn-sm" data-act="send">\ud83d\udce4 \u7acb\u5373\u53d1\u9001</button><button class="btn btn-success btn-sm" data-act="sched">\u23f0 \u5b9a\u65f6\u53d1\u9001</button><button class="btn btn-outline btn-sm" data-act="cancel">\u53d6\u6d88\u8c03\u5ea6</button></span></div>';
+  schedSec.querySelector('.sd').addEventListener('change', function(e) { r.schedDate = e.target.value; });
+  schedSec.querySelector('.st').addEventListener('change', function(e) { r.schedTime = e.target.value; });
+  schedSec.querySelector('[data-act="send"]').addEventListener('click', function() { store.send(r.id); });
+  schedSec.querySelector('[data-act="sched"]').addEventListener('click', function() { store.schedule(r.id); });
+  schedSec.querySelector('[data-act="cancel"]').addEventListener('click', function() { store.cancelSchedule(r.id); });
+
+  // ---- Logs ----
+  var logOpen = false;
+  var logWrap = document.createElement('div');
+  var logEl = document.createElement('div');
+  logEl.className = 'log-area';
+  logEl.style.display = 'none';
+  var logToggle = document.createElement('div');
+  logToggle.className = 'toggle-log';
+  logToggle.textContent = '\ud83d\udccb \u65e5\u5fd7 (' + r.logs.length + ' \u6761) \u25b8 \u5c55\u5f00';
+  logToggle.addEventListener('click', function() {
+    logOpen = !logOpen;
+    logEl.style.display = logOpen ? 'block' : 'none';
+    logToggle.textContent = '\ud83d\udccb \u65e5\u5fd7 (' + r.logs.length + ' \u6761) ' + (logOpen ? '\u25be \u6536\u8d77' : '\u25b8 \u5c55\u5f00');
+    if (logOpen) renderLogs();
+  });
+  function renderLogs() {
+    var html = '';
+    for (var li=0;li<r.logs.length;li++) {
+      var l = r.logs[li];
+      var isErr = l.msg.indexOf('\u274c') === 0 || l.msg.indexOf('\ud83d\udca5') === 0;
+      var isOk = l.msg.indexOf('\u2705') === 0;
+      var cls = isErr ? 'lerr' : isOk ? 'lok' : '';
+      html += '<div class="le"><span class="lt">' + fmtTS(l.t) + '</span><span class="' + cls + '">' + esc(l.msg) + '</span></div>';
+    }
+    logEl.innerHTML = html;
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+  logWrap.appendChild(logToggle);
+  logWrap.appendChild(logEl);
+
+  // ---- Response ----
+  var respWrap = document.createElement('div');
+  var respOpen = false;
+  var respEl = document.createElement('div');
+  respEl.className = 'log-area';
+  respEl.style.display = 'none';
+  respEl.style.borderTop = '1px solid var(--border)';
+  var respToggle = document.createElement('div');
+  respToggle.className = 'toggle-log';
+  respToggle.textContent = '\ud83d\udce5 \u8fd4\u56de\u62a5\u6587 \u25b8 \u5c55\u5f00';
+  respToggle.addEventListener('click', function() {
+    respOpen = !respOpen;
+    respEl.style.display = respOpen ? 'block' : 'none';
+    respToggle.textContent = '\ud83d\udce5 \u8fd4\u56de\u62a5\u6587 ' + (respOpen ? '\u25be \u6536\u8d77' : '\u25b8 \u5c55\u5f00');
+    if (respOpen) renderResp();
+  });
+  function renderResp() {
+    if (r.response) {
+      respEl.innerHTML = '<pre style="margin:0;padding:8px;font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-all;background:#f8fafc;border-radius:4px;color:var(--text)">' + esc(r.response) + '</pre>';
+    } else {
+      respEl.innerHTML = '<div style="padding:12px;text-align:center;color:var(--text2);font-size:13px">\u5c1a\u672a\u53d1\u9001\u8bf7\u6c42</div>';
+    }
+  }
+  respWrap.appendChild(respToggle);
+  respWrap.appendChild(respEl);
+
+  // Append all to card
+  bd.appendChild(urlSec);
+  bd.appendChild(paramSec);
+  bd.appendChild(hdrSec);
+  bd.appendChild(bodySec);
+  bd.appendChild(repSec);
+  bd.appendChild(schedSec);
+  card.appendChild(hd);
+  card.appendChild(bd);
+  card.appendChild(logWrap);
+  card.appendChild(respWrap);
+  parent.appendChild(card);
+}
+
+function addRequest() { store.add(defaultReq()); }
+addRequest();
+</script>
+</body>
+</html>
